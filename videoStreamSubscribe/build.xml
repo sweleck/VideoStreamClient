@@ -1,0 +1,249 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="project" default="project.build.all" basedir=".">
+	<!--
+		Environment Settings
+
+		Properties
+
+		flex.sdk.home : FLEX sdk home directory
+		build.dir : Project output
+		src.dir : Project sources
+		output.file.extension : Output project file extension (swc/swf)
+		project.flex.conf : Compiler configuration xml file
+		mainclass.name : Main class
+		-->
+	<property name="project.name" value="videoStreamSubscribe"/>
+	<property name="mainclass.file" value="Main.mxml" />
+	<property name="build.dir" location="./build"/>
+	<property name="src.dir" location="./src"/>
+	<condition property="output.file.extension" value="swc" else="swf">
+		<isset property="project.type.isComponent"/>
+	</condition>
+	<property name="project.flex.conf" location="./${project.name}-config.xml"/>
+
+	<!--
+		Environment Settings
+
+		OS Settings :
+
+		os.Linux : Linux Environment
+		os.Windows : Windows Environment
+		os.Mac : Mac Environment
+		-->
+	<condition property="os.Linux">
+		<and>
+			<os family="unix"/>
+			<not>
+				<os family="mac"/>
+			</not>
+		</and>
+	</condition>
+	<condition property="os.Windows">
+		<os family="windows"/>
+	</condition>
+	<condition property="os.Mac">
+		<os family="mac"/>
+	</condition>
+
+	<!--
+		Public Targets
+		-->
+	<target
+			name="init"
+			depends="-init.win, -init.unix, -init.mac"
+			description="Init settings according current os"
+			/>
+
+	<target
+			name="project.build.all"
+			depends="init">
+		<echo message="Creating output bin directory"/>
+		<mkdir dir="${build.dir}"/>
+
+		<!--fileset id="sources" dir="${src.dir}">
+					<filename name="${mainclass.name}" negate="true"/>
+					<or>
+						<filename name="**/*.mxml"/>
+						<filename name="**/*.as"/>
+					</or>
+				</fileset>
+				<pathconvert property="classes" pathsep=" " refid="sources">
+					<chainedmapper>
+						<globmapper from="${src.dir}${file.separator}" to=""/>
+						<!-mapper type="package" from="*.as" to="*"/->
+						<compositemapper>
+							<mapper type="package" from="*.mxml" to="*"/>
+							<mapper type="package" from="*.as" to="*"/>
+						</compositemapper>
+					</chainedmapper>
+				</pathconvert-->
+		<antcall target="-compc.run">
+			<!--param name="compc.src.classes" value="${classes}"/-->
+			<param name="compc.bin.file" location="${build.dir}/${project.name}.${output.file.extension}"/>
+		</antcall>
+		<antcall target="-mxmlc.run">
+			<param name="mxmlc.bin.file" location="${build.dir}/${project.name}.${output.file.extension}"/>
+			<param name="mxmlc.src.mainClass" location="${src.dir}/${mainclass.file}"/>
+		</antcall>
+		<copy file="${build.dir}/${project.name}.${output.file.extension}" todir="${build.dir}../../../../../public/static/swf"/>
+	</target>
+	<target
+			name="create.rsl">
+		<unzip src="${swcFile}" dest="${build.dir}/${rslDirName}">
+			<patternset>
+				<include name="library.swf"/>
+			</patternset>
+		</unzip>
+	</target>
+	<target
+			name="project.clean">
+		<echo message="Cleaning project ${project.name}..."/>
+		<delete includeemptydirs="true">
+			<fileset dir="${build.dir}"/>
+		</delete>
+	</target>
+	<target
+			name="project.run"
+			depends="init, project.build.all">
+		<echo message="Launch project ${project.name}"/>
+		<available
+				file="${flex.player}"
+				property="flashplayer.present"/>
+		<antcall target="install.FlashPlayer"/>
+		<property name="swfFile" location="${build.dir}/${project.name}.swf"/>
+		<property environment="env"/>
+		<exec searchpath="true" executable="${flex.player}">
+			<env key="PATH" path="${env.PATH}:${flex.sdk.home}/bin"/>
+			<arg line="${swfFile}"/>
+		</exec>
+		<!--exec searchpath="true" executable="${flex.sdk.home}/bin/flashplayer">
+					<env key="PATH" path="${env.PATH}:${flex.sdk.home}/bin" />
+					<arg line="${swfFile}" />
+				</exec-->
+	</target>
+	<target
+			name="install.FlashPlayer"
+			unless="flashplayer.present">
+		<antcall target="-install.FlashPlayer.Windows"/>
+		<antcall target="-install.FlashPlayer.Mac"/>
+		<antcall target="-install.FlashPlayer.Linux"/>
+
+	</target>
+	<!--
+		Private targets
+		-->
+	<target
+			name="-install.FlashPlayer.Linux"
+			if="os.Linux">
+		<untar
+				src="${flex.sdk.home}/runtimes/player/lnx/flashplayer.tar.gz"
+				dest="${flex.sdk.home}/bin"
+				compression="gzip"
+				/>
+		<chmod
+				file="${flex.sdk.home}/bin/flashplayer"
+				perm="+x"
+				/>
+	</target>
+	<target
+			name="-install.FlashPlayer.Windows"
+			if="os.Windows">
+		<copy
+				file="${flex.sdk.home}/runtimes/player/win/FlashPlayer.exe"
+				todir="${flex.sdk.home}/bin"
+				/>
+	</target>
+	<target
+			name="-install.FlashPlayer.Mac"
+			if="os.Mac">
+		<!--echo>Install FlashPlayer from ${flex.sdk.home}/runtimes/player/mac</echo-->
+		<unzip
+				src="${flex.sdk.home}/runtimes/player/mac/Flash Player.app.zip"
+				dest="${flex.sdk.home}/runtimes/player/mac"
+				/>
+		<chmod
+				file="${flex.sdk.home}/runtimes/player/mac/Flash Player.app/Contents/MacOS/Flash Player"
+				perm="+x"
+				/>
+	</target>
+	<target
+			name="-mxmlc.run"
+			depends="init, -mxmlc.config.run"
+			/>
+	<target
+			name="-compc.run"
+			depends="init, -compc.config.run"
+			/>
+	<target
+			name="-mxmlc.config.run"
+			depends="-mxmlc.run.check"
+			if="mxmlc.run.ok"
+			>
+		<exec dir="${flex.sdk.home}/bin" executable="${flex.compilo.app}" failonerror="true">
+			<arg line="-load-config+='${project.flex.conf}'"/>
+			<arg value="-output"/>
+			<arg value="${mxmlc.bin.file}"/>
+			<arg value="-file-specs"/>
+			<arg value="${mxmlc.src.mainClass}"/>
+			<arg value="-static-link-runtime-shared-libraries=true"/>
+		</exec>
+	</target>
+	<target
+			name="-mxmlc.run.check"
+			description="Check if you can launch mxmlc compilator"
+			>
+		<condition property="mxmlc.run.ok">
+			<and>
+				<length string="${mxmlc.bin.file}" trim="true" when="greater" length="0"/>
+				<length string="${mxmlc.src.mainClass}" trim="true" when="greater" length="0"/>
+				<not>
+					<isset property="project.type.isComponent"/>
+				</not>
+			</and>
+		</condition>
+	</target>
+	<target
+			name="-compc.run.check"
+			description="Check if you can launch compc compilator"
+			>
+		<condition property="compc.run.ok">
+			<and>
+				<isset property="project.type.isComponent"/>
+			</and>
+		</condition>
+	</target>
+	<target
+			name="-compc.config.run"
+			depends="-compc.run.check"
+			if="compc.run.ok"
+			>
+		<exec dir="${flex.sdk.home}/bin" executable="${flex.compilo.comp}" failonerror="true">
+			<arg line="-load-config+='${project.flex.conf}'"/>
+			<!--arg line="-include-classes='${compc.src.classes}'" /-->
+			<arg value="-output"/>
+			<arg value="${compc.bin.file}"/>
+		</exec>
+	</target>
+	<target
+			name="-init.win"
+			if="os.Windows">
+		<property name="flex.compilo.comp" location="${flex.sdk.home}/bin/compc.exe"/>
+		<property name="flex.compilo.app" location="${flex.sdk.home}/bin/mxmlc.exe"/>
+		<property name="flex.player" location="${flex.sdk.home}/bin/flashplayer.exe"/>
+	</target>
+	<target
+			name="-init.unix"
+			if="os.Linux">
+		<property name="flex.compilo.comp" location="${flex.sdk.home}/bin/compc"/>
+		<property name="flex.compilo.app" location="${flex.sdk.home}/bin/mxmlc"/>
+		<property name="flex.player" location="${flex.sdk.home}/bin/flashplayer"/>
+	</target>
+	<target
+			name="-init.mac"
+			if="os.Mac">
+		<property name="flex.compilo.comp" location="${flex.sdk.home}/bin/compc"/>
+		<property name="flex.compilo.app" location="${flex.sdk.home}/bin/mxmlc"/>
+		<property name="flex.player" location="${flex.sdk.home}/runtimes/player/mac/Flash Player.app/Contents/MacOS/Flash Player"/>
+	</target>
+</project>
+

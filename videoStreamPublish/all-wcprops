@@ -1,0 +1,23 @@
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/fuckbook/!svn/ver/8466/trunk/www/library/VideoStreamClient/videoStreamPublish
+END
+videoStreamClient-config.xml
+K 25
+svn:wc:ra_dav:version-url
+V 107
+/fuckbook/!svn/ver/8464/trunk/www/library/VideoStreamClient/videoStreamPublish/videoStreamClient-config.xml
+END
+videoStreamPublish-config.xml
+K 25
+svn:wc:ra_dav:version-url
+V 108
+/fuckbook/!svn/ver/8464/trunk/www/library/VideoStreamClient/videoStreamPublish/videoStreamPublish-config.xml
+END
+build.xml
+K 25
+svn:wc:ra_dav:version-url
+V 88
+/fuckbook/!svn/ver/8464/trunk/www/library/VideoStreamClient/videoStreamPublish/build.xml
+END
